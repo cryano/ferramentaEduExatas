@@ -5,8 +5,8 @@ import google.generativeai as genai
 # Configuração da Página e Tema AVA/UCSAL (Dark Mode Nativo)
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="AVA Exatas | UCSAL",
-    page_icon="🎓",
+    page_title="Plataforma de Exatas | UCSAL",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
@@ -168,9 +168,9 @@ def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
 # Estrutura Principal de Navegação (Abas)
 # -----------------------------------------------------------------------------
 tab_ia, tab_materiais, tab_grupos = st.tabs([
-    "💬 Tutor de IA (Pedagógico)", 
-    "📚 Biblioteca & Materiais Didáticos", 
-    "🗓️ Agendamento de Grupos de Estudo"
+    "IA Assistente", 
+    "Biblioteca & Materiais Didáticos", 
+    "Agendamento de Grupos de Estudo"
 ])
 
 # =============================================================================
@@ -179,7 +179,7 @@ tab_ia, tab_materiais, tab_grupos = st.tabs([
 with tab_ia:
     st.markdown("""
         <div class="ava-card">
-            <div class="ava-card-title">🤖 Assistente Virtual de Apoio ao Estudante</div>
+            <div class="ava-card-title">Assistente Virtual de Apoio</div>
             <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
                 O Tutor Virtual atua como mediador de aprendizagem. De acordo com as diretrizes pedagógicas do curso, 
                 ele <strong>não fornece respostas diretas aos exercícios</strong>, auxiliando na compreensão de teoremas, 
@@ -232,7 +232,7 @@ with tab_ia:
 with tab_materiais:
     st.markdown("""
         <div class="ava-card">
-            <div class="ava-card-title">📖 Repositório de Conteúdos e Referências Bibliográficas</div>
+            <div class="ava-card-title">Repositório de Conteúdos e Referências Bibliográficas</div>
             <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
                 Materiais estruturados segundo a ementa acadêmica oficial da UCSAL, com indicação direta dos capítulos das obras físicas disponíveis na Biblioteca Central da Universidade.
             </p>
@@ -256,7 +256,7 @@ with tab_materiais:
             """)
             st.markdown("""
             <div class="biblio-box">
-                <span class="biblio-title">📚 Referências Recomendadas:</span><br>
+                <span class="biblio-title">Referências Recomendadas:</span><br>
                 • <strong>STEWART, James.</strong> <em>Cálculo, Volume 1</em>. 8ª Ed. São Paulo: Cengage Learning, 2016. <strong>Capítulo 2 (Seções 2.2 a 2.6, pp. 83–130)</strong>.<br>
                 • <strong>FLEMMING, Diva M.; GONÇALVES, Mirian B.</strong> <em>Cálculo A: Funções, Limite, Derivação e Integração</em>. 6ª Ed. Pearson, 2007. <strong>Capítulo 3 (pp. 67–118)</strong>.
             </div>
@@ -274,7 +274,7 @@ with tab_materiais:
             """)
             st.markdown("""
             <div class="biblio-box">
-                <span class="biblio-title">📚 Referências Recomendadas:</span><br>
+                <span class="biblio-title">Referências Recomendadas:</span><br>
                 • <strong>STEWART, James.</strong> <em>Cálculo, Volume 1</em>. 8ª Ed. <strong>Capítulo 3 (Seções 3.1 a 3.9, pp. 170–245)</strong>.<br>
                 • <strong>LEITHOLD, Louis.</strong> <em>O Cálculo com Geometria Analítica, Vol. 1</em>. 3ª Ed. Harbra, 1994. <strong>Capítulo 3 (pp. 145–210)</strong>.
             </div>
@@ -295,7 +295,7 @@ with tab_materiais:
             """)
             st.markdown("""
             <div class="biblio-box">
-                <span class="biblio-title">📚 Referências Recomendadas:</span><br>
+                <span class="biblio-title">Referências Recomendadas:</span><br>
                 • <strong>STEWART, James.</strong> <em>Cálculo, Volume 1</em>. 8ª Ed. <strong>Capítulo 5 (pp. 353–412)</strong> e <strong>Capítulo 7 (Seções 7.1 a 7.4)</strong>.<br>
                 • <strong>THOMAS, George B.</strong> <em>Cálculo, Volume 1</em>. 12ª Ed. Pearson, 2012. <strong>Capítulo 5 e Capítulo 8 (pp. 440–510)</strong>.
             </div>
@@ -313,7 +313,7 @@ with tab_materiais:
             """)
             st.markdown("""
             <div class="biblio-box">
-                <span class="biblio-title">📚 Referências Recomendadas:</span><br>
+                <span class="biblio-title">Referências Recomendadas:</span><br>
                 • <strong>STEWART, James.</strong> <em>Cálculo, Volume 1</em>. 8ª Ed. <strong>Capítulo 6 (Seções 6.1 a 6.3, pp. 417–445)</strong>.<br>
                 • <strong>FLEMMING, Diva M.; GONÇALVES, Mirian B.</strong> <em>Cálculo A</em>. 6ª Ed. <strong>Capítulo 7 (pp. 280–325)</strong>.
             </div>
@@ -325,7 +325,7 @@ with tab_materiais:
 with tab_grupos:
     st.markdown("""
         <div class="ava-card">
-            <div class="ava-card-title">🤝 Módulo de Aprendizagem Colaborativa</div>
+            <div class="ava-card-title">Módulo de Aprendizagem Colaborativa</div>
             <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
                 Agende sessões de estudo presenciais ou virtuais com colegas da UCSAL, monitores e alunos veteranos. 
                 Selecione um dos turnos e horários oficiais abaixo.
