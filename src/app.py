@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # -----------------------------------------------------------------------------
-# Configuração da Página e Tema AVA/UCSAL
+# Configuração da Página e Tema AVA/UCSAL (Dark Mode Nativo)
 # -----------------------------------------------------------------------------
 st.set_page_config(
     page_title="AVA Exatas | UCSAL",
@@ -11,88 +11,92 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilização CSS inspirada no ambiente virtual acadêmico (AVA / Moodle)
+# Estilização CSS totalmente adaptada para o Tema Escuro Institucional
 st.markdown("""
     <style>
-    /* Estilo Geral */
+    /* Reset de Fundo e Texto Principal */
     .stApp {
-        background-color: #F8FAFC;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #0F172A;
+        color: #F8FAFC;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     
-    /* Header Institucional AVA */
+    /* Header Institucional AVA (Estilo Dark Navy) */
     .ava-header {
-        background: linear-gradient(135deg, #002B49 0%, #005691 100%);
+        background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
+        border: 1px solid #334155;
         color: #FFFFFF;
-        padding: 24px 32px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 43, 73, 0.15);
+        padding: 20px 24px;
+        border-radius: 10px;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
         margin-bottom: 24px;
         display: flex;
         justify-content: space-between;
         align-items: center;
     }
-    .ava-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
-    .ava-subtitle { font-size: 0.95rem; color: #E2E8F0; margin-top: 4px; }
+    .ava-title { font-size: 1.7rem; font-weight: 700; color: #F8FAFC; margin: 0; }
+    .ava-subtitle { font-size: 0.9rem; color: #94A3B8; margin-top: 4px; }
     .ava-badge {
-        background-color: #FFB800;
-        color: #002B49;
+        background-color: #EAB308;
+        color: #0F172A;
         font-size: 0.75rem;
         font-weight: 800;
         padding: 6px 12px;
-        border-radius: 4px;
+        border-radius: 6px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
 
-    /* Cartões de Conteúdo */
+    /* Cartões de Conteúdo Dark */
     .ava-card {
-        background-color: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 16px;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-radius: 10px;
+        padding: 18px 22px;
+        margin-bottom: 20px;
+        color: #E2E8F0;
     }
     .ava-card-title {
-        color: #002B49;
-        font-size: 1.1rem;
+        color: #38BDF8;
+        font-size: 1.15rem;
         font-weight: 700;
         margin-bottom: 8px;
     }
 
     /* Caixas de Referência Bibliográfica */
     .biblio-box {
-        background-color: #F1F5F9;
-        border-left: 4px solid #005691;
-        padding: 10px 14px;
-        border-radius: 0 6px 6px 0;
+        background-color: #0F172A;
+        border-left: 4px solid #38BDF8;
+        padding: 12px 16px;
+        border-radius: 0 8px 8px 0;
         font-size: 0.88rem;
-        color: #334155;
-        margin-top: 10px;
+        color: #CBD5E1;
+        margin-top: 12px;
     }
-    .biblio-title { font-weight: 700; color: #002B49; }
+    .biblio-title { font-weight: 700; color: #38BDF8; }
 
-    /* Customização de Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        border-bottom: 2px solid #E2E8F0;
+    /* Cards das Sessões Agendadas */
+    .session-card {
+        background-color: #1E293B;
+        border: 1px solid #334155;
+        border-left: 4px solid #38BDF8;
+        padding: 14px 18px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        color: #F1F5F9;
     }
-    .stTabs [data-baseweb="tab"] {
-        height: 48px;
-        white-space: pre-wrap;
-        background-color: #FFFFFF;
-        border-radius: 6px 6px 0 0;
-        color: #475569;
-        font-weight: 600;
-        padding: 10px 20px;
-        border: 1px solid #E2E8F0;
-        border-bottom: none;
+    .session-title { color: #38BDF8; font-size: 1.05rem; font-weight: 700; }
+    .session-meta { font-size: 0.85rem; color: #94A3B8; margin-top: 6px; line-height: 1.5; }
+
+    /* Ajuste de Botões de Abas para garantir Visibilidade do Texto */
+    button[data-baseweb="tab"] {
+        color: #94A3B8 !important;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
     }
-    .stTabs [aria-selected="true"] {
-        background-color: #005691 !important;
-        color: #FFFFFF !important;
-        border-color: #005691 !important;
+    button[data-baseweb="tab"][aria-selected="true"] {
+        color: #38BDF8 !important;
+        border-bottom-color: #38BDF8 !important;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -109,7 +113,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Gestão de Autenticação da API do Gemini (Com Tratamento Fallback de Modelos)
+# Autenticação da API do Gemini (Com Tratamento Fallback)
 # -----------------------------------------------------------------------------
 api_key = None
 if "GEMINI_API_KEY" in st.secrets:
@@ -123,7 +127,6 @@ def inicializar_modelo_gemini(chave, instrucao_sistema):
     """Inicializa a API testando nomes de modelos compatíveis para evitar erro 404."""
     genai.configure(api_key=chave)
     
-    # Lista de identificadores de modelo em ordem de prioridade
     modelos_candidatos = [
         "gemini-1.5-flash-latest",
         "gemini-1.5-flash",
@@ -143,10 +146,10 @@ def inicializar_modelo_gemini(chave, instrucao_sistema):
             ultimo_erro = e
             continue
             
-    raise RuntimeError(f"Não foi possível conectar aos modelos Gemini. Detalhe: {ultimo_erro}")
+    raise RuntimeError(f"Não foi possível conectar aos modelos Gemini: {ultimo_erro}")
 
 # -----------------------------------------------------------------------------
-# Estrutura em Abas (Estilo Moodle / AVA)
+# Estrutura Principal de Navegação (Abas)
 # -----------------------------------------------------------------------------
 tab_ia, tab_materiais, tab_grupos = st.tabs([
     "💬 Tutor de IA (Pedagógico)", 
@@ -155,13 +158,13 @@ tab_ia, tab_materiais, tab_grupos = st.tabs([
 ])
 
 # =============================================================================
-# ABA 1: TUTOR DE IA (PEDAGÓGICO - REGRAS ESTRITAS)
+# ABA 1: TUTOR DE IA (PEDAGÓGICO)
 # =============================================================================
 with tab_ia:
     st.markdown("""
         <div class="ava-card">
             <div class="ava-card-title">🤖 Assistente Virtual de Apoio ao Estudante</div>
-            <p style="color: #475569; font-size: 0.92rem; margin: 0;">
+            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
                 O Tutor Virtual atua como mediador de aprendizagem. De acordo com as diretrizes pedagógicas do curso, 
                 ele <strong>não fornece respostas diretas aos exercícios</strong>, auxiliando na compreensão de teoremas, 
                 identificação de equívocos de raciocínio e orientação passo a passo.
@@ -217,7 +220,7 @@ with tab_materiais:
     st.markdown("""
         <div class="ava-card">
             <div class="ava-card-title">📖 Repositório de Conteúdos e Referências Bibliográficas</div>
-            <p style="color: #475569; font-size: 0.92rem; margin: 0;">
+            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
                 Materiais estruturados segundo a ementa acadêmica oficial da UCSAL, com indicação direta dos capítulos das obras físicas disponíveis na Biblioteca Central da Universidade.
             </p>
         </div>
@@ -226,7 +229,7 @@ with tab_materiais:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("### 📘 Cálculo I")
+        st.markdown("<h3 style='color: #F8FAFC;'>📘 Cálculo I</h3>", unsafe_allow_html=True)
         
         with st.expander("1. Limites e Continuidade", expanded=True):
             st.markdown("""
@@ -265,7 +268,7 @@ with tab_materiais:
             """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("### 📙 Cálculo II")
+        st.markdown("<h3 style='color: #F8FAFC;'>📙 Cálculo II</h3>", unsafe_allow_html=True)
         
         with st.expander("1. Integrais Definidas e Indefinidas", expanded=True):
             st.markdown("""
@@ -304,20 +307,19 @@ with tab_materiais:
             """, unsafe_allow_html=True)
 
 # =============================================================================
-# ABA 3: AGENDAMENTO COLABORATIVO (OPÇÕES PROGRAMADAS)
+# ABA 3: AGENDAMENTO COLABORATIVO
 # =============================================================================
 with tab_grupos:
     st.markdown("""
         <div class="ava-card">
             <div class="ava-card-title">🤝 Módulo de Aprendizagem Colaborativa</div>
-            <p style="color: #475569; font-size: 0.92rem; margin: 0;">
-                Agende sessoes de estudo presenciais ou virtuais com colegas da UCSAL, monitores e alunos veteranos. 
+            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
+                Agende sessões de estudo presenciais ou virtuais com colegas da UCSAL, monitores e alunos veteranos. 
                 Selecione um dos turnos e horários oficiais abaixo.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    # Dados em sessão para simulador
     if "grupos_agendados" not in st.session_state:
         st.session_state.grupos_agendados = [
             {
@@ -341,12 +343,12 @@ with tab_grupos:
     col_esq, col_dir = st.columns([1, 1])
 
     with col_esq:
-        st.markdown("#### 📅 Sessões Confirmadas")
+        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>📅 Sessões Confirmadas</h4>", unsafe_allow_html=True)
         for g in st.session_state.grupos_agendados:
             st.markdown(f"""
-            <div style="background-color: #FFFFFF; border: 1px solid #CBD5E1; border-left: 4px solid #005691; padding: 14px; border-radius: 6px; margin-bottom: 12px;">
-                <strong style="color: #002B49; font-size: 1.05rem;">{g['materia']}</strong> — <span style="color: #334155;">{g['assunto']}</span><br>
-                <div style="font-size: 0.85rem; color: #64748B; margin-top: 6px;">
+            <div class="session-card">
+                <div class="session-title">{g['materia']} — {g['assunto']}</div>
+                <div class="session-meta">
                     🗓️ <strong>Data/Turno:</strong> {g['dia']} | {g['horario']}<br>
                     📍 <strong>Local:</strong> {g['local']}<br>
                     👤 <strong>Organizado por:</strong> {g['organizador']}
@@ -355,10 +357,9 @@ with tab_grupos:
             """, unsafe_allow_html=True)
 
     with col_dir:
-        st.markdown("#### ➕ Agendar Nova Sessão")
+        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>➕ Agendar Nova Sessão</h4>", unsafe_allow_html=True)
         with st.form("form_agendamento_programado", clear_on_submit=True):
             
-            # Opções totalmente preprogramadas para padronização
             disciplina_sel = st.selectbox(
                 "Disciplina", 
                 ["Cálculo I", "Cálculo II", "Matemática Básica"]
@@ -392,7 +393,6 @@ with tab_grupos:
                 ]
             )
 
-            # Apenas 2 campos abertos (tópico e identificação)
             assunto_input = st.text_input("Tópico/Assunto Específico (ex: Teorema do Confronto)", placeholder="Digite o tema do estudo...")
             organizador_input = st.text_input("Nome do Aluno / Matrícula UCSAL", placeholder="Ex: Maria Serra (Matrícula: 200040584)")
 
