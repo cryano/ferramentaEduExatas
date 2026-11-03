@@ -242,7 +242,7 @@ with tab_materiais:
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("<h3 style='color: #F8FAFC;'>📘 Cálculo I</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #F8FAFC;'>Cálculo I</h3>", unsafe_allow_html=True)
         
         with st.expander("1. Limites e Continuidade", expanded=True):
             st.markdown("""
@@ -281,7 +281,7 @@ with tab_materiais:
             """, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<h3 style='color: #F8FAFC;'>📙 Cálculo II</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color: #F8FAFC;'>Cálculo II</h3>", unsafe_allow_html=True)
         
         with st.expander("1. Integrais Definidas e Indefinidas", expanded=True):
             st.markdown("""
@@ -356,7 +356,7 @@ with tab_grupos:
     col_esq, col_dir = st.columns([1, 1])
 
     with col_esq:
-        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>📅 Sessões Confirmadas</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>Sessões Confirmadas</h4>", unsafe_allow_html=True)
         for g in st.session_state.grupos_agendados:
             st.markdown(f"""
             <div class="session-card">
@@ -370,7 +370,7 @@ with tab_grupos:
             """, unsafe_allow_html=True)
 
     with col_dir:
-        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>➕ Agendar Nova Sessão</h4>", unsafe_allow_html=True)
+        st.markdown("<h4 style='color: #38BDF8; font-weight: 700;'>Agendar Nova Sessão</h4>", unsafe_allow_html=True)
         with st.form("form_agendamento_programado", clear_on_submit=True):
             
             disciplina_sel = st.selectbox(
@@ -409,7 +409,7 @@ with tab_grupos:
             assunto_input = st.text_input("Tópico/Assunto Específico (ex: Teorema do Confronto)", placeholder="Digite o tema do estudo...")
             organizador_input = st.text_input("Nome do Aluno / Matrícula UCSAL", placeholder="Ex: Maria Serra (Matrícula: 200040584)")
 
-            btn_submeter = st.form_submit_button("Confirmar Agendamento no AVA")
+            btn_submeter = st.form_submit_button("Confirmar Agendamento")
 
             if btn_submeter:
                 if not assunto_input or not organizador_input:
