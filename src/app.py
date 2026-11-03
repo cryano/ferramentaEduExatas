@@ -113,7 +113,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # -----------------------------------------------------------------------------
-# Autenticação da API do Gemini (Com Tratamento Fallback)
+# Autenticação da API do Gemini
 # -----------------------------------------------------------------------------
 api_key = None
 if "GEMINI_API_KEY" in st.secrets:
@@ -123,30 +123,13 @@ else:
         st.error("⚙️ Configuração Pendente")
         api_key = st.text_input("Insira sua API Key do Google Gemini:", type="password")
 
-def inicializar_modelo_gemini(chave, instrucao_sistema):
-    """Inicializa a API testando nomes de modelos compatíveis para evitar erro 404."""
+def obter_modelo_gemini(chave, instrucao_sistema):
+    """Inicializa a API utilizando o modelo oficial gemini-1.5-flash."""
     genai.configure(api_key=chave)
-    
-    modelos_candidatos = [
-        "gemini-1.5-flash-latest",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
-        "gemini-pro"
-    ]
-    
-    ultimo_erro = None
-    for nome_modelo in modelos_candidatos:
-        try:
-            modelo = genai.GenerativeModel(
-                model_name=nome_modelo,
-                system_instruction=instrucao_sistema
-            )
-            return modelo, nome_modelo
-        except Exception as e:
-            ultimo_erro = e
-            continue
-            
-    raise RuntimeError(f"Não foi possível conectar aos modelos Gemini: {ultimo_erro}")
+    return genai.GenerativeModel(
+        model_name="gemini-1.5-flash",
+        system_instruction=instrucao_sistema
+    )
 
 # -----------------------------------------------------------------------------
 # Estrutura Principal de Navegação (Abas)
@@ -188,7 +171,7 @@ with tab_ia:
         st.warning("⚠️ Insira a chave de API do Gemini nos Segredos da aplicação para habilitar o atendimento.")
     else:
         try:
-            model, model_name_used = inicializar_modelo_gemini(api_key, SYSTEM_PROMPT)
+            model = obter_modelo_gemini(api_key, SYSTEM_PROMPT)
 
             if "chat_messages" not in st.session_state:
                 st.session_state.chat_messages = [
