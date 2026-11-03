@@ -123,11 +123,34 @@ else:
         st.error("⚙️ Configuração Pendente")
         api_key = st.text_input("Insira sua API Key do Google Gemini:", type="password")
 
+# -----------------------------------------------------------------------------
+# Autenticação e Instanciação Dinâmica do Gemini
+# -----------------------------------------------------------------------------
 def obter_modelo_gemini(chave, instrucao_sistema):
-    """Inicializa a API utilizando o modelo oficial gemini-1.5-flash."""
+    """Configura a API e escolhe automaticamente um modelo suportado e ativo na chave."""
     genai.configure(api_key=chave)
+    
+    nome_modelo = "gemini-1.5-flash"  # Modelo padrão de fallback
+    
+    try:
+        # Consulta a lista de modelos ativos para a tua chave de API
+        modelos_validos = [
+            m.name for m in genai.list_models() 
+            if 'generateContent' in m.supported_generation_methods
+        ]
+        
+        if modelos_validos:
+            # Prioriza modelos 'flash' e depois qualquer modelo válido retornado pela API
+            modelos_flash = [m for m in modelos_validos if 'flash' in m]
+            if modelos_flash:
+                nome_modelo = modelos_flash[0]
+            else:
+                nome_modelo = modelos_validos[0]
+    except Exception:
+        pass
+
     return genai.GenerativeModel(
-        model_name="gemini-1.5-flash",
+        model_name=nome_modelo,
         system_instruction=instrucao_sistema
     )
 
