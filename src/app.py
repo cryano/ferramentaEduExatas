@@ -124,32 +124,45 @@ else:
         api_key = st.text_input("Insira sua API Key do Google Gemini:", type="password")
 
 # -----------------------------------------------------------------------------
-# Autenticação e Instanciação do Gemini
+# Chamada à API com Fallback Real Durante o Envio
 # -----------------------------------------------------------------------------
-def obter_modelo_gemini(chave, instrucao_sistema):
-    """Configura a API testando os modelos ativos e homologados pelo Google."""
+def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
     genai.configure(api_key=chave)
     
-    # Lista dos modelos mais recentes indicados pela API do Google
-    modelos_disponiveis = [
-        "gemini-2.5-flash",
-        "gemini-3.8-flash",
-        "gemini-1.5-flash"
-    ]
-    
+    # 1. Obtém dinamicamente os modelos suportados pela sua chave
+    candidatos = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                candidatos.append(m.name)
+    except Exception:
+        pass
+
+    # 2. Se a lista automática falhar, usa os identificadores legados
+    if not candidatos:
+        candidatos = [
+            "gemini-1.5-flash",
+            "models/gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "models/gemini-1.5-pro",
+            "gemini-1.0-pro"
+        ]
+        
     ultimo_erro = None
-    for nome_modelo in modelos_disponiveis:
+    # 3. Teste REAL no momento do generate_content
+    for nome_modelo in candidatos:
         try:
             modelo = genai.GenerativeModel(
                 model_name=nome_modelo,
                 system_instruction=instrucao_sistema
             )
-            return modelo
+            resposta = modelo.generate_content(prompt)
+            return resposta.text
         except Exception as e:
             ultimo_erro = e
             continue
             
-    raise RuntimeError(f"Não foi possível inicializar nenhum modelo Gemini disponível: {ultimo_erro}")
+    raise RuntimeError(f"Nenhum modelo disponível respondeu à requisição. Detalhes: {ultimo_erro}")
 
 # -----------------------------------------------------------------------------
 # Estrutura Principal de Navegação (Abas)
@@ -190,31 +203,28 @@ with tab_ia:
     if not api_key:
         st.warning("⚠️ Insira a chave de API do Gemini nos Segredos da aplicação para habilitar o atendimento.")
     else:
-        try:
-            model = obter_modelo_gemini(api_key, SYSTEM_PROMPT)
+        if "chat_messages" not in st.session_state:
+            st.session_state.chat_messages = [
+                {"role": "assistant", "content": "Olá! Sou o Tutor Virtual de Cálculo da UCSAL. Qual conceito ou problema você deseja analisar agora?"}
+            ]
 
-            if "chat_messages" not in st.session_state:
-                st.session_state.chat_messages = [
-                    {"role": "assistant", "content": "Olá! Sou o Tutor Virtual de Cálculo da UCSAL. Qual conceito ou problema você deseja analisar agora?"}
-                ]
+        for msg in st.session_state.chat_messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
 
-            for msg in st.session_state.chat_messages:
-                with st.chat_message(msg["role"]):
-                    st.markdown(msg["content"])
+        if prompt := st.chat_input("Digite sua dúvida acadêmica (ex: 'Como aplico a regra da cadeia na derivada de sin(x^2)?')..."):
+            st.session_state.chat_messages.append({"role": "user", "content": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
 
-            if prompt := st.chat_input("Digite sua dúvida acadêmica (ex: 'Como aplico a regra da cadeia na derivada de sin(x^2)?')..."):
-                st.session_state.chat_messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"):
-                    st.markdown(prompt)
-
-                with st.chat_message("assistant"):
-                    with st.spinner("Consultando base de conhecimento pedagógica..."):
-                        response = model.generate_content(prompt)
-                        st.markdown(response.text)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": response.text})
-
-        except Exception as e:
-            st.error(f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}")
+            with st.chat_message("assistant"):
+                with st.spinner("Consultando base de conhecimento pedagógica..."):
+                    try:
+                        resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, prompt)
+                        st.markdown(resposta_texto)
+                        st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
+                    except Exception as e:
+                        st.error(f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}")
 
 # =============================================================================
 # ABA 2: BIBLIOTECA & MATERIAIS DIDÁTICOS REAIS
