@@ -124,35 +124,32 @@ else:
         api_key = st.text_input("Insira sua API Key do Google Gemini:", type="password")
 
 # -----------------------------------------------------------------------------
-# Autenticação e Instanciação Dinâmica do Gemini
+# Autenticação e Instanciação do Gemini
 # -----------------------------------------------------------------------------
 def obter_modelo_gemini(chave, instrucao_sistema):
-    """Configura a API e escolhe automaticamente um modelo suportado e ativo na chave."""
+    """Configura a API testando os modelos ativos e homologados pelo Google."""
     genai.configure(api_key=chave)
     
-    nome_modelo = "gemini-1.5-flash"  # Modelo padrão de fallback
+    # Lista dos modelos mais recentes indicados pela API do Google
+    modelos_disponiveis = [
+        "gemini-2.5-flash",
+        "gemini-3.8-flash",
+        "gemini-1.5-flash"
+    ]
     
-    try:
-        # Consulta a lista de modelos ativos para a tua chave de API
-        modelos_validos = [
-            m.name for m in genai.list_models() 
-            if 'generateContent' in m.supported_generation_methods
-        ]
-        
-        if modelos_validos:
-            # Prioriza modelos 'flash' e depois qualquer modelo válido retornado pela API
-            modelos_flash = [m for m in modelos_validos if 'flash' in m]
-            if modelos_flash:
-                nome_modelo = modelos_flash[0]
-            else:
-                nome_modelo = modelos_validos[0]
-    except Exception:
-        pass
-
-    return genai.GenerativeModel(
-        model_name=nome_modelo,
-        system_instruction=instrucao_sistema
-    )
+    ultimo_erro = None
+    for nome_modelo in modelos_disponiveis:
+        try:
+            modelo = genai.GenerativeModel(
+                model_name=nome_modelo,
+                system_instruction=instrucao_sistema
+            )
+            return modelo
+        except Exception as e:
+            ultimo_erro = e
+            continue
+            
+    raise RuntimeError(f"Não foi possível inicializar nenhum modelo Gemini disponível: {ultimo_erro}")
 
 # -----------------------------------------------------------------------------
 # Estrutura Principal de Navegação (Abas)
