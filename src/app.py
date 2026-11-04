@@ -256,6 +256,22 @@ def extrair_texto_sem_pensamento(resposta):
 # -----------------------------------------------------------------------------
 # Chamada à API com Fallback Real Durante o Envio
 # -----------------------------------------------------------------------------
+def montar_conteudo_com_historico(mensagens, limite=12):
+    """
+    Converte o histórico do chat (já incluindo a pergunta atual como última mensagem)
+    para o formato do Gemini. Ignora a saudação inicial e mensagens de erro.
+    """
+    conteudo = []
+    for m in mensagens:
+        if m["content"].startswith("⚠️"):
+            continue
+        papel = "user" if m["role"] == "user" else "model"
+        # O histórico precisa começar com uma mensagem do aluno (descarta a saudação inicial)
+        if not conteudo and papel == "model":
+            continue
+        conteudo.append({"role": papel, "parts": [m["content"]]})
+    return conteudo[-limite:]
+
 def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
     genai.configure(api_key=chave)
     candidatos = montar_candidatos(chave)
@@ -268,7 +284,7 @@ def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
                 system_instruction=instrucao_sistema,
                 generation_config={"temperature": 0.4}
             )
-            resposta = modelo.generate_content(prompt)
+            resposta = modelo.generate_content(prompt)  # prompt = lista de mensagens (histórico + pergunta atual)
             bruto = extrair_texto_sem_pensamento(resposta)
             final = extrair_resposta_final(bruto)
             if final:
@@ -327,7 +343,14 @@ Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
             ]
 
         # Histórico em área com rolagem própria (o campo de digitação fica sempre visível logo abaixo)
-        area_chat = st.container(height=480, border=True)
+        # A caixa começa pequena e cresce conforme a conversa, até um limite (depois disso, rola).
+        ALTURA_MIN, ALTURA_MAX = 110, 480
+        altura_estimada = 30
+        for m in st.session_state.chat_messages:
+            linhas = max(1, -(-len(m["content"]) // 110))  # ceil(chars / ~110 por linha)
+            altura_estimada += 55 + linhas * 24 + m["content"].count("\n") * 24
+        altura_chat = max(ALTURA_MIN, min(ALTURA_MAX, altura_estimada))
+        area_chat = st.container(height=altura_chat, border=True)
         with area_chat:
             for msg in st.session_state.chat_messages:
                 with st.chat_message(msg["role"]):
@@ -350,7 +373,8 @@ Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
             st.session_state.chat_messages.append({"role": "user", "content": prompt.strip()})
             with st.spinner("Consultando base de conhecimento pedagógica..."):
                 try:
-                    resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, prompt.strip())
+                    conteudo = montar_conteudo_com_historico(st.session_state.chat_messages)
+                    resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, conteudo)
                     st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
                 except Exception as e:
                     st.session_state.chat_messages.append({
@@ -380,7 +404,7 @@ with tab_materiais:
         with st.expander("1. Limites e Continuidade", expanded=True):
             st.markdown("""
             **Tópicos Principais:**
-            * Nocão intuitiva de limite e definição formal ($\varepsilon, \delta$)
+            * Noção intuitiva de limite e definição formal ($\\varepsilon, \\delta$)
             * Limites laterais, infinitos e no infinito
             * Formas indeterminadas ($\\frac{0}{0}, \\frac{\infty}{\infty}$) e Teorema do Confronto
 
