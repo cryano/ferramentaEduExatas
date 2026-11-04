@@ -126,78 +126,157 @@ else:
             st.error("⚙️ Configuração Pendente")
 
 # -----------------------------------------------------------------------------
-# Sanitização Rígida da Resposta (Remove vaza de Rascunhos e CoT)
+# Extração e Sanitização da Resposta (remove rascunhos / raciocínio interno)
 # -----------------------------------------------------------------------------
-def tratar_texto_resposta(texto):
-    """Filtra e elimina vazamentos de meta-análise/rascunhos mentais em inglês da API."""
+def extrair_resposta_final(texto):
+    """
+    O modelo é instruído a escrever a resposta final dentro de <resposta>...</resposta>.
+    Tudo que estiver fora dessas tags (rascunhos, análise de regras etc.) é descartado.
+    """
     if not texto:
         return ""
-    
+
+    # Caso normal: tags completas (pega a ÚLTIMA ocorrência, que é a resposta definitiva)
+    blocos = re.findall(r'<resposta>(.*?)</resposta>', texto, re.DOTALL | re.IGNORECASE)
+    blocos = [b.strip() for b in blocos if b.strip()]
+    if blocos:
+        return blocos[-1]
+
+    # Tag de abertura sem fechamento (resposta cortada)
+    partes = re.split(r'<resposta>', texto, flags=re.IGNORECASE)
+    if len(partes) > 1 and partes[-1].strip():
+        return re.sub(r'</?resposta>', '', partes[-1], flags=re.IGNORECASE).strip()
+
+    # Fallback: sem tags, usa a limpeza heurística
+    return tratar_texto_resposta(texto)
+
+
+def tratar_texto_resposta(texto):
+    """Fallback: filtra vazamentos de meta-análise/rascunhos mentais em inglês."""
+    if not texto:
+        return ""
+
     # Se houver saudação oficial em português após os metadados, corta tudo que veio antes
     match_ola = re.search(r'(Olá!.*)', texto, re.DOTALL)
     if match_ola and any(kw in texto for kw in ["User question:", "User asks:", "Constraint Check:", "Draft"]):
         texto = match_ola.group(1)
 
-    # Limpeza de linhas residuais de metadados
     linhas = texto.splitlines()
     linhas_limpas = []
-    
+
     for linha in linhas:
         l_lower = linha.strip().lower()
         if any(key in l_lower for key in [
-            'user question:', 'user asks:', 'constraint check:', 'identity:', 
-            'draft 1:', 'draft:', 'refining for tone', 'expanding on', 
-            'ensuring latex', 'only final message', 'no planning'
+            'user question:', 'user asks:', 'constraint check:', 'constraints:', 'identity:',
+            'draft 1:', 'draft:', 'refining for tone', 'expanding on',
+            'ensuring latex', 'only final message', 'no planning', 'self-correction',
+            'goal:', 'role:', 'greeting:', 'interactive element:', 'theoretical approach:',
+            'practical approach:', 'ensure tone'
         ]):
             continue
-        if re.match(r'^\s*[-*•]\s*("|\')?(user|constraint|identity|role|scope|guidelines|formatting|who|how|programming|draft|refining|expanding|ensuring)', l_lower):
+        if re.match(r'^\s*[-*•]\s*("|\')?(user|constraint|identity|role|scope|guidelines|formatting|who|how|programming|draft|refining|expanding|ensuring|goal|greeting|definition|theoretical|practical|interactive)', l_lower):
             continue
         linhas_limpas.append(linha)
-        
+
     resultado = "\n".join(linhas_limpas).strip()
-    
+
     # Remove aspas externas caso a API tenha envelopado a resposta inteira entre aspas
-    if (resultado.startswith('"') and resultado.endswith('"')) or (resultado.startswith("'") and resultado.endswith("'")):
+    if len(resultado) > 1 and ((resultado.startswith('"') and resultado.endswith('"')) or (resultado.startswith("'") and resultado.endswith("'"))):
         resultado = resultado[1:-1].strip()
-        
+
     return resultado
+
+# -----------------------------------------------------------------------------
+# Escolha dos modelos (apenas modelos Gemini "normais", sem modelos de raciocínio)
+# -----------------------------------------------------------------------------
+MODELOS_PREFERIDOS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-flash-latest",
+    "gemini-1.5-flash",
+    "gemini-2.5-pro",
+    "gemini-1.5-pro",
+]
+MODELOS_EXCLUIDOS = [
+    "gemma", "thinking", "exp", "tts", "image", "vision", "embedding",
+    "aqa", "live", "audio", "learnlm", "robotics", "computer-use"
+]
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def listar_modelos_disponiveis(chave):
+    genai.configure(api_key=chave)
+    nomes = []
+    try:
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                nomes.append(m.name.replace("models/", ""))
+    except Exception:
+        pass
+    return nomes
+
+def montar_candidatos(chave):
+    disponiveis = listar_modelos_disponiveis(chave)
+    candidatos = []
+
+    # 1) Preferidos, na ordem, se existirem na conta
+    for pref in MODELOS_PREFERIDOS:
+        if pref in disponiveis:
+            candidatos.append(pref)
+
+    # 2) Demais modelos gemini-* que não sejam de raciocínio/experimentais
+    for nome in disponiveis:
+        if nome in candidatos or not nome.startswith("gemini"):
+            continue
+        if any(x in nome for x in MODELOS_EXCLUIDOS):
+            continue
+        candidatos.append(nome)
+
+    # 3) Se a listagem falhou, tenta os preferidos às cegas
+    if not candidatos:
+        candidatos = list(MODELOS_PREFERIDOS)
+
+    return candidatos
+
+def extrair_texto_sem_pensamento(resposta):
+    """Junta apenas as partes que NÃO são 'pensamento' do modelo."""
+    try:
+        partes_texto = []
+        for cand in resposta.candidates:
+            for parte in cand.content.parts:
+                if getattr(parte, "thought", False):
+                    continue
+                if getattr(parte, "text", None):
+                    partes_texto.append(parte.text)
+        if partes_texto:
+            return "".join(partes_texto)
+    except Exception:
+        pass
+    return resposta.text
 
 # -----------------------------------------------------------------------------
 # Chamada à API com Fallback Real Durante o Envio
 # -----------------------------------------------------------------------------
 def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
     genai.configure(api_key=chave)
-    
-    candidatos = []
-    try:
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                candidatos.append(m.name)
-    except Exception:
-        pass
+    candidatos = montar_candidatos(chave)
 
-    if not candidatos:
-        candidatos = [
-            "gemini-1.5-flash",
-            "models/gemini-1.5-flash",
-            "gemini-1.5-pro",
-            "models/gemini-1.5-pro",
-            "gemini-1.0-pro"
-        ]
-        
     ultimo_erro = None
     for nome_modelo in candidatos:
         try:
             modelo = genai.GenerativeModel(
                 model_name=nome_modelo,
-                system_instruction=instrucao_sistema
+                system_instruction=instrucao_sistema,
+                generation_config={"temperature": 0.4}
             )
             resposta = modelo.generate_content(prompt)
-            return tratar_texto_resposta(resposta.text)
+            bruto = extrair_texto_sem_pensamento(resposta)
+            final = extrair_resposta_final(bruto)
+            if final:
+                return final
         except Exception as e:
             ultimo_erro = e
             continue
-            
+
     raise RuntimeError(f"Nenhum modelo disponível respondeu à requisição. Detalhes: {ultimo_erro}")
 
 # -----------------------------------------------------------------------------
@@ -232,7 +311,12 @@ REGRAS OBRIGATÓRIAS:
 1. Responda SEMPRE diretamente ao aluno em português do Brasil.
 2. É ESTRITAMENTE PROIBIDO exibir raciocínio interno, análises de regras, rascunhos ou cabeçalhos em inglês (como 'User question:', 'Constraint:', 'Draft:', 'Identity:').
 3. JAMAIS forneça soluções prontas ou respostas numéricas finais de exercícios. Explique os conceitos e faça perguntas reflexivas para que o estudante encontre a resposta.
-4. Utilize notação LaTeX para termos matemáticos quando necessário ($x^2$, $\\int f(x)dx$)."""
+4. Utilize notação LaTeX para termos matemáticos quando necessário ($x^2$, $\\int f(x)dx$).
+
+FORMATO DE SAÍDA (OBRIGATÓRIO):
+Escreva TODA a mensagem destinada ao aluno dentro das tags <resposta> e </resposta>.
+Nada deve aparecer fora dessas tags: nenhum planejamento, análise, rascunho ou comentário.
+Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
 
     if not api_key:
         st.warning("⚠️ Insira a chave de API do Gemini nos Segredos da aplicação para habilitar o atendimento.")
@@ -242,23 +326,37 @@ REGRAS OBRIGATÓRIAS:
                 {"role": "assistant", "content": "Olá! Sou o Tutor Virtual de Cálculo da UCSAL. Qual conceito ou problema você deseja analisar agora?"}
             ]
 
-        for msg in st.session_state.chat_messages:
-            with st.chat_message(msg["role"]):
-                st.markdown(msg["content"])
+        # Histórico em área com rolagem própria (o campo de digitação fica sempre visível logo abaixo)
+        area_chat = st.container(height=480, border=True)
+        with area_chat:
+            for msg in st.session_state.chat_messages:
+                with st.chat_message(msg["role"]):
+                    st.markdown(msg["content"])
 
-        if prompt := st.chat_input("Digite sua dúvida acadêmica (ex: 'Como aplico a regra da cadeia na derivada de sin(x^2)?')..."):
-            st.session_state.chat_messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
+        # Campo de mensagem: formulário fixo na aba (não depende de st.chat_input, que
+        # some/aparece de forma inconsistente quando está dentro de abas)
+        with st.form("form_chat_ia", clear_on_submit=True):
+            col_input, col_btn = st.columns([6, 1], vertical_alignment="bottom")
+            with col_input:
+                prompt = st.text_input(
+                    "Sua dúvida",
+                    placeholder="Digite sua dúvida acadêmica (ex: 'Como aplico a regra da cadeia na derivada de sin(x^2)?')...",
+                    label_visibility="collapsed"
+                )
+            with col_btn:
+                enviar = st.form_submit_button("Enviar", use_container_width=True)
 
-            with st.chat_message("assistant"):
-                with st.spinner("Consultando base de conhecimento pedagógica..."):
-                    try:
-                        resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, prompt)
-                        st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
-                    except Exception as e:
-                        st.error(f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}")
-            
+        if enviar and prompt and prompt.strip():
+            st.session_state.chat_messages.append({"role": "user", "content": prompt.strip()})
+            with st.spinner("Consultando base de conhecimento pedagógica..."):
+                try:
+                    resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, prompt.strip())
+                    st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
+                except Exception as e:
+                    st.session_state.chat_messages.append({
+                        "role": "assistant",
+                        "content": f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}"
+                    })
             st.rerun()
 
 # =============================================================================
