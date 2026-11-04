@@ -120,8 +120,10 @@ if "GEMINI_API_KEY" in st.secrets:
     api_key = st.secrets["GEMINI_API_KEY"]
 else:
     with st.sidebar:
-        st.error("⚙️ Configuração Pendente")
         api_key = st.text_input("Insira sua API Key do Google Gemini:", type="password")
+        # Correção 2: O aviso só aparece se a chave estiver vazia, impedindo que pisque durante o uso[cite: 14].
+        if not api_key:
+            st.error("⚙️ Configuração Pendente")
 
 # -----------------------------------------------------------------------------
 # Chamada à API com Fallback Real Durante o Envio
@@ -221,10 +223,14 @@ with tab_ia:
                 with st.spinner("Consultando base de conhecimento pedagógica..."):
                     try:
                         resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, prompt)
-                        st.markdown(resposta_texto)
+                        # Apenas adicionamos a mensagem à memória[cite: 14]. A renderização será feita na próxima linha.
                         st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
                     except Exception as e:
                         st.error(f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}")
+            
+            # Correção 1: Força a atualização da interface imediatamente. 
+            # Isso impede que o campo de input desapareça por estar dentro de uma aba.
+            st.rerun()
 
 # =============================================================================
 # ABA 2: BIBLIOTECA & MATERIAIS DIDÁTICOS REAIS
