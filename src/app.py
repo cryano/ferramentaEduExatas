@@ -125,6 +125,35 @@ else:
             st.error("⚙️ Configuração Pendente")
 
 # -----------------------------------------------------------------------------
+# Sanitização Rígida de Resposta
+# -----------------------------------------------------------------------------
+def tratar_texto_resposta(texto):
+    """Elimina rascunhos mentais e análises estruturais geradas pela API."""
+    if not texto:
+        return ""
+    
+    # Se houver marca de rascunho ("Draft:"), isola apenas o texto final
+    if "Draft:" in texto:
+        texto = texto.split("Draft:")[-1]
+        
+    linhas = texto.splitlines()
+    linhas_filtradas = []
+    
+    for linha in linhas:
+        l_strip = linha.strip()
+        if any(l_strip.startswith(prefix) for prefix in [
+            "- User asks:", "Constraint Check:", "- Role:", "- Scope:", 
+            "- Guidelines:", "- Formatting:", "- Who am I:", "- How I help:", 
+            "- Programming:", "- Greeting:", "- Identification:", "- Mission:", 
+            "- Methodology:", "- Topics:", "- No final", "- Explain", 
+            "- Reflective", "- Academic", "- LaTeX", "- Start immediately"
+        ]):
+            continue
+        linhas_filtradas.append(linha)
+        
+    return "\n".join(linhas_filtradas).strip()
+
+# -----------------------------------------------------------------------------
 # Chamada à API com Fallback Real Durante o Envio
 # -----------------------------------------------------------------------------
 def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
@@ -155,7 +184,7 @@ def chamar_gemini_com_fallback(chave, instrucao_sistema, prompt):
                 system_instruction=instrucao_sistema
             )
             resposta = modelo.generate_content(prompt)
-            return resposta.text
+            return tratar_texto_resposta(resposta.text)
         except Exception as e:
             ultimo_erro = e
             continue
@@ -186,23 +215,14 @@ with tab_ia:
         </div>
     """, unsafe_allow_html=True)
 
-    SYSTEM_PROMPT = """
-    Você é o Assistente Virtual Acadêmico de Exatas da Universidade Católica do Salvador (UCSAL).
-    Sua atuação é restrita ao ensino de Matemática Básica, Cálculo I e Cálculo II.
+    SYSTEM_PROMPT = """Você é o Assistente Virtual Acadêmico de Exatas da Universidade Católica do Salvador (UCSAL).
+Sua missão é atuar como tutor pedagógico para estudantes de Matemática Básica, Cálculo I e Cálculo II.
 
-    DIRETRIZES PEDAGÓGICAS OBRIGATÓRIAS:
-    1. JAMAIS forneça a solução final, resultado numérico ou resolução completa imediata de um exercício.
-    2. Explique os conceitos e teoremas teóricos envolvidos no problema abordado pelo estudante.
-    3. Responda fazendo perguntas reflexivas para que o estudante identifique o próximo passo lógico.
-    4. Se o aluno apresentar uma resolução errada, aponte a linha/etapa exata do equívoco conceitual e explique o motivo.
-    5. Adote postura acadêmica, formal, clara e motivadora. Utilize notação LaTeX quando necessário ($x^2$, $\int f(x)dx$).
-
-    REGRAS RÍGIDAS DE FORMATAÇÃO DA RESPOSTA:
-    - Responda DIRETAMENTE ao aluno em português.
-    - É ESTRITAMENTE PROIBIDO exibir seu raciocínio interno, análises de tópicos, notas de planejamento ou rascunhos.
-    - É ESTRITAMENTE PROIBIDO incluir cabeçalhos ou marcadores em inglês como 'User asks:', 'Constraint:', 'Scope:', 'Role:', 'Goal:', 'Identity:', 'Methodology:' ou notas de auto-correção.
-    - Inicie a mensagem imediatamente com a resposta acadêmica direta ao aluno.
-    """
+REGRAS RÍGIDAS DE RESPOSTA:
+1. Responda APENAS com a mensagem final em português destinada ao aluno.
+2. JAMAIS inclua tópicos de planejamento, rascunhos, checagem de restrições ou texto em inglês como 'User asks:', 'Constraint Check:', 'Draft:', 'Scope:', 'Role:'.
+3. JAMAIS forneça o resultado numérico ou a solução pronta de um problema de exatas; faça perguntas reflexivas e explique conceitos teóricos.
+4. Utilize notação LaTeX quando pertinente ($x^2$, $\\int f(x)dx$)."""
 
     if not api_key:
         st.warning("⚠️ Insira a chave de API do Gemini nos Segredos da aplicação para habilitar o atendimento.")
