@@ -1,5 +1,6 @@
 import streamlit as st
 import google.generativeai as genai
+import re
 
 # -----------------------------------------------------------------------------
 # Configuração da Página e Tema AVA/UCSAL (Dark Mode Nativo)
@@ -125,33 +126,41 @@ else:
             st.error("⚙️ Configuração Pendente")
 
 # -----------------------------------------------------------------------------
-# Sanitização Rígida de Resposta
+# Sanitização Rígida da Resposta (Remove vaza de Rascunhos e CoT)
 # -----------------------------------------------------------------------------
 def tratar_texto_resposta(texto):
-    """Elimina rascunhos mentais e análises estruturais geradas pela API."""
+    """Filtra e elimina vazamentos de meta-análise/rascunhos mentais em inglês da API."""
     if not texto:
         return ""
     
-    # Se houver marca de rascunho ("Draft:"), isola apenas o texto final
-    if "Draft:" in texto:
-        texto = texto.split("Draft:")[-1]
-        
+    # Se houver saudação oficial em português após os metadados, corta tudo que veio antes
+    match_ola = re.search(r'(Olá!.*)', texto, re.DOTALL)
+    if match_ola and any(kw in texto for kw in ["User question:", "User asks:", "Constraint Check:", "Draft"]):
+        texto = match_ola.group(1)
+
+    # Limpeza de linhas residuais de metadados
     linhas = texto.splitlines()
-    linhas_filtradas = []
+    linhas_limpas = []
     
     for linha in linhas:
-        l_strip = linha.strip()
-        if any(l_strip.startswith(prefix) for prefix in [
-            "- User asks:", "Constraint Check:", "- Role:", "- Scope:", 
-            "- Guidelines:", "- Formatting:", "- Who am I:", "- How I help:", 
-            "- Programming:", "- Greeting:", "- Identification:", "- Mission:", 
-            "- Methodology:", "- Topics:", "- No final", "- Explain", 
-            "- Reflective", "- Academic", "- LaTeX", "- Start immediately"
+        l_lower = linha.strip().lower()
+        if any(key in l_lower for key in [
+            'user question:', 'user asks:', 'constraint check:', 'identity:', 
+            'draft 1:', 'draft:', 'refining for tone', 'expanding on', 
+            'ensuring latex', 'only final message', 'no planning'
         ]):
             continue
-        linhas_filtradas.append(linha)
+        if re.match(r'^\s*[-*•]\s*("|\')?(user|constraint|identity|role|scope|guidelines|formatting|who|how|programming|draft|refining|expanding|ensuring)', l_lower):
+            continue
+        linhas_limpas.append(linha)
         
-    return "\n".join(linhas_filtradas).strip()
+    resultado = "\n".join(linhas_limpas).strip()
+    
+    # Remove aspas externas caso a API tenha envelopado a resposta inteira entre aspas
+    if (resultado.startswith('"') and resultado.endswith('"')) or (resultado.startswith("'") and resultado.endswith("'")):
+        resultado = resultado[1:-1].strip()
+        
+    return resultado
 
 # -----------------------------------------------------------------------------
 # Chamada à API com Fallback Real Durante o Envio
@@ -216,13 +225,14 @@ with tab_ia:
     """, unsafe_allow_html=True)
 
     SYSTEM_PROMPT = """Você é o Assistente Virtual Acadêmico de Exatas da Universidade Católica do Salvador (UCSAL).
-Sua missão é atuar como tutor pedagógico para estudantes de Matemática Básica, Cálculo I e Cálculo II.
 
-REGRAS RÍGIDAS DE RESPOSTA:
-1. Responda APENAS com a mensagem final em português destinada ao aluno.
-2. JAMAIS inclua tópicos de planejamento, rascunhos, checagem de restrições ou texto em inglês como 'User asks:', 'Constraint Check:', 'Draft:', 'Scope:', 'Role:'.
-3. JAMAIS forneça o resultado numérico ou a solução pronta de um problema de exatas; faça perguntas reflexivas e explique conceitos teóricos.
-4. Utilize notação LaTeX quando pertinente ($x^2$, $\\int f(x)dx$)."""
+Sua atuação é restrita às disciplinas de Matemática Básica, Cálculo I e Cálculo II.
+
+REGRAS OBRIGATÓRIAS:
+1. Responda SEMPRE diretamente ao aluno em português do Brasil.
+2. É ESTRITAMENTE PROIBIDO exibir raciocínio interno, análises de regras, rascunhos ou cabeçalhos em inglês (como 'User question:', 'Constraint:', 'Draft:', 'Identity:').
+3. JAMAIS forneça soluções prontas ou respostas numéricas finais de exercícios. Explique os conceitos e faça perguntas reflexivas para que o estudante encontre a resposta.
+4. Utilize notação LaTeX para termos matemáticos quando necessário ($x^2$, $\\int f(x)dx$)."""
 
     if not api_key:
         st.warning("⚠️ Insira a chave de API do Gemini nos Segredos da aplicação para habilitar o atendimento.")
