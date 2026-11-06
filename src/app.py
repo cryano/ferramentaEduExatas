@@ -3,30 +3,44 @@ import google.generativeai as genai
 import re
 
 # -----------------------------------------------------------------------------
-# Configuração da Página e Tema AVA/UCSAL (Dark Mode Nativo)
+# Identidade da ferramenta (mesmo nome usado no relatório do projeto)
+# -----------------------------------------------------------------------------
+NOME_FERRAMENTA = "Ferramenta Educacional Colaborativa com IA para Apoio em Exatas"
+
+# -----------------------------------------------------------------------------
+# Configuração da Página e Tema AVA/UCSAL (Dark Mode)
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Plataforma de Exatas | UCSAL",
+    page_title=f"{NOME_FERRAMENTA} | UCSAL",
     page_icon="",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Estilização CSS totalmente adaptada para o Tema Escuro Institucional
+# Paleta (contraste mínimo WCAG AA = 4.5:1 para texto normal):
+#   Fundo #0F172A | Cartões #1E293B | Texto #F8FAFC (17:1) | Texto secundário #CBD5E1 (12:1)
+#   Destaque #7DD3FC (azul claro, 11:1) | Botões: fundo #38BDF8 com texto #0F172A (8:1)
+# O CSS força cores claras em TODOS os componentes, para que a leitura não dependa
+# do tema (claro/escuro) do navegador de quem acessa.
 st.markdown("""
     <style>
-    /* Reset de Fundo e Texto Principal */
+    :root { color-scheme: dark; }
+
+    /* Fundo e texto principal (baixa especificidade: não sobrescreve cores definidas nas classes abaixo) */
     .stApp {
         background-color: #0F172A;
         color: #F8FAFC;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    
-    /* Header Institucional AVA (Estilo Dark Navy) */
+    .stApp :where(p, li, label, span, h1, h2, h3, h4, h5, h6, summary, small, th, td) {
+        color: #F8FAFC;
+    }
+    .stApp :where(a) { color: #7DD3FC; }
+
+    /* Header Institucional */
     .ava-header {
         background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
-        border: 1px solid #334155;
-        color: #FFFFFF;
+        border: 1px solid #475569;
         padding: 20px 24px;
         border-radius: 10px;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
@@ -34,11 +48,12 @@ st.markdown("""
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 16px;
     }
-    .ava-title { font-size: 1.7rem; font-weight: 700; color: #F8FAFC; margin: 0; }
-    .ava-subtitle { font-size: 0.9rem; color: #94A3B8; margin-top: 4px; }
-    .ava-badge {
-        background-color: #EAB308;
+    .ava-header .ava-title { font-size: 1.45rem; font-weight: 700; color: #F8FAFC; margin: 0; line-height: 1.3; }
+    .ava-header .ava-subtitle { font-size: 0.95rem; color: #CBD5E1; margin-top: 6px; }
+    .ava-header .ava-badge {
+        background-color: #FACC15;
         color: #0F172A;
         font-size: 0.75rem;
         font-weight: 800;
@@ -46,19 +61,19 @@ st.markdown("""
         border-radius: 6px;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+        white-space: nowrap;
     }
 
-    /* Cartões de Conteúdo Dark */
+    /* Cartões de Conteúdo */
     .ava-card {
         background-color: #1E293B;
-        border: 1px solid #334155;
+        border: 1px solid #475569;
         border-radius: 10px;
         padding: 18px 22px;
         margin-bottom: 20px;
-        color: #E2E8F0;
     }
-    .ava-card-title {
-        color: #38BDF8;
+    .ava-card .ava-card-title {
+        color: #7DD3FC;
         font-size: 1.15rem;
         font-weight: 700;
         margin-bottom: 8px;
@@ -70,44 +85,106 @@ st.markdown("""
         border-left: 4px solid #38BDF8;
         padding: 12px 16px;
         border-radius: 0 8px 8px 0;
-        font-size: 0.88rem;
-        color: #CBD5E1;
+        font-size: 0.9rem;
         margin-top: 12px;
     }
-    .biblio-title { font-weight: 700; color: #38BDF8; }
+    .biblio-box, .biblio-box strong, .biblio-box em { color: #E2E8F0; }
+    .biblio-box .biblio-title { font-weight: 700; color: #7DD3FC; }
 
     /* Cards das Sessões Agendadas */
     .session-card {
         background-color: #1E293B;
-        border: 1px solid #334155;
+        border: 1px solid #475569;
         border-left: 4px solid #38BDF8;
         padding: 14px 18px;
         border-radius: 8px;
         margin-bottom: 12px;
-        color: #F1F5F9;
     }
-    .session-title { color: #38BDF8; font-size: 1.05rem; font-weight: 700; }
-    .session-meta { font-size: 0.85rem; color: #94A3B8; margin-top: 6px; line-height: 1.5; }
+    .session-card .session-title { color: #7DD3FC; font-size: 1.05rem; font-weight: 700; }
+    .session-card .session-meta { font-size: 0.9rem; color: #E2E8F0; margin-top: 6px; line-height: 1.6; }
+    .session-card .session-meta strong { color: #F8FAFC; }
 
-    /* Ajuste de Botões de Abas para garantir Visibilidade do Texto */
-    button[data-baseweb="tab"] {
-        color: #94A3B8 !important;
+    /* Abas: texto legível, aba ativa destacada */
+    .stApp [data-baseweb="tab-list"] { gap: 8px; border-bottom: 1px solid #475569; }
+    .stApp button[data-baseweb="tab"] { background: transparent !important; }
+    .stApp button[data-baseweb="tab"] p,
+    .stApp button[data-baseweb="tab"] span,
+    .stApp button[data-baseweb="tab"] div {
+        color: #E2E8F0 !important;
         font-weight: 600 !important;
-        font-size: 0.95rem !important;
+        font-size: 1rem !important;
     }
-    button[data-baseweb="tab"][aria-selected="true"] {
-        color: #38BDF8 !important;
-        border-bottom-color: #38BDF8 !important;
+    .stApp button[data-baseweb="tab"][aria-selected="true"] p,
+    .stApp button[data-baseweb="tab"][aria-selected="true"] span,
+    .stApp button[data-baseweb="tab"][aria-selected="true"] div {
+        color: #7DD3FC !important;
     }
+    .stApp [data-baseweb="tab-highlight"] { background-color: #38BDF8 !important; height: 3px !important; }
+    .stApp [data-baseweb="tab-border"] { background-color: #475569 !important; }
+
+    /* Botões (inclui o "Enviar" e o "Confirmar Agendamento") */
+    .stApp .stButton > button,
+    .stApp [data-testid="stFormSubmitButton"] > button,
+    .stApp [data-testid^="stBaseButton"] {
+        background-color: #38BDF8 !important;
+        border: 1px solid #38BDF8 !important;
+        border-radius: 8px !important;
+    }
+    .stApp .stButton > button *,
+    .stApp [data-testid="stFormSubmitButton"] > button *,
+    .stApp [data-testid^="stBaseButton"] * {
+        color: #0F172A !important;
+        font-weight: 700 !important;
+    }
+    .stApp .stButton > button:hover,
+    .stApp [data-testid="stFormSubmitButton"] > button:hover,
+    .stApp [data-testid^="stBaseButton"]:hover {
+        background-color: #7DD3FC !important;
+        border-color: #7DD3FC !important;
+    }
+    .stApp button:focus-visible, .stApp input:focus-visible { outline: 3px solid #FACC15 !important; outline-offset: 2px; }
+
+    /* Campos de texto e listas de seleção */
+    .stApp input, .stApp textarea,
+    .stApp [data-baseweb="input"], .stApp [data-baseweb="base-input"],
+    .stApp [data-baseweb="select"] > div {
+        background-color: #1E293B !important;
+        color: #F8FAFC !important;
+        -webkit-text-fill-color: #F8FAFC !important;
+        border-color: #64748B !important;
+    }
+    .stApp input::placeholder, .stApp textarea::placeholder {
+        color: #A9B6C8 !important;
+        -webkit-text-fill-color: #A9B6C8 !important;
+        opacity: 1 !important;
+    }
+    .stApp [data-baseweb="select"] * { color: #F8FAFC !important; }
+    [data-baseweb="popover"] [data-baseweb="menu"],
+    [data-baseweb="popover"] ul { background-color: #1E293B !important; }
+    [data-baseweb="popover"] li, [data-baseweb="popover"] li * { color: #F8FAFC !important; }
+    [data-baseweb="popover"] li:hover, [data-baseweb="popover"] li[aria-selected="true"] { background-color: #334155 !important; }
+
+    /* Chat */
+    .stApp [data-testid="stChatMessage"] { background-color: #1E293B; border: 1px solid #334155; border-radius: 10px; }
+    .stApp [data-testid="stChatMessage"] * { color: #F8FAFC; }
+    .stApp [data-testid="stVerticalBlockBorderWrapper"] { border-color: #475569; }
+
+    /* Expanders, formulários e avisos */
+    .stApp [data-testid="stExpander"] { border: 1px solid #475569; border-radius: 8px; background-color: #1E293B; }
+    .stApp [data-testid="stExpander"] summary, .stApp [data-testid="stExpander"] summary * { color: #F8FAFC !important; }
+    .stApp [data-testid="stForm"] { border-color: #475569; }
+    .stApp [data-testid="stAlert"] * { color: #F8FAFC !important; }
+    .stApp [data-testid="stSpinner"] * { color: #E2E8F0 !important; }
+    [data-testid="stSidebar"] { background-color: #1E293B; }
     </style>
 """, unsafe_allow_html=True)
 
 # Topo Institucional
-st.markdown("""
+st.markdown(f"""
     <div class="ava-header">
         <div>
-            <div class="ava-title">Ambiente Virtual de Aprendizagem | Exatas</div>
-            <div class="ava-subtitle">Universidade Católica do Salvador — Apoio Integrado em Matemática Básica e Cálculo</div>
+            <div class="ava-title">{NOME_FERRAMENTA}</div>
+            <div class="ava-subtitle">Universidade Católica do Salvador (UCSAL) — Apoio em Matemática Básica, Cálculo I e Cálculo II</div>
         </div>
         <div class="ava-badge">Semestre 2026.2</div>
     </div>
@@ -310,16 +387,17 @@ tab_ia, tab_materiais, tab_grupos = st.tabs([
 with tab_ia:
     st.markdown("""
         <div class="ava-card">
-            <div class="ava-card-title">Assistente Virtual de Apoio</div>
-            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
-                O Tutor Virtual atua como mediador de aprendizagem. De acordo com as diretrizes pedagógicas do curso, 
+            <div class="ava-card-title">IA Assistente (Tutor Pedagógico)</div>
+            <p style="color: #CBD5E1; font-size: 0.92rem; margin: 0;">
+                O Tutor Pedagógico atua como mediador de aprendizagem. De acordo com as diretrizes pedagógicas do curso, 
                 ele <strong>não fornece respostas diretas aos exercícios</strong>, auxiliando na compreensão de teoremas, 
                 identificação de equívocos de raciocínio e orientação passo a passo.
             </p>
         </div>
     """, unsafe_allow_html=True)
 
-    SYSTEM_PROMPT = """Você é o Assistente Virtual Acadêmico de Exatas da Universidade Católica do Salvador (UCSAL).
+    SYSTEM_PROMPT = f"""Você é o Tutor Pedagógico da {NOME_FERRAMENTA}, da Universidade Católica do Salvador (UCSAL).
+Quando precisar se apresentar, use sempre esse nome.
 
 Sua atuação é restrita às disciplinas de Matemática Básica, Cálculo I e Cálculo II.
 
@@ -339,7 +417,7 @@ Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
     else:
         if "chat_messages" not in st.session_state:
             st.session_state.chat_messages = [
-                {"role": "assistant", "content": "Olá! Sou o Tutor Virtual de Cálculo da UCSAL. Qual conceito ou problema você deseja analisar agora?"}
+                {"role": "assistant", "content": f"Olá! Sou o Tutor Pedagógico da {NOME_FERRAMENTA} (UCSAL). Posso ajudar com Matemática Básica, Cálculo I e Cálculo II. Qual conceito ou problema você deseja analisar agora?"}
             ]
 
         # Histórico em área com rolagem própria (o campo de digitação fica sempre visível logo abaixo)
@@ -349,12 +427,30 @@ Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
         for m in st.session_state.chat_messages:
             linhas = max(1, -(-len(m["content"]) // 110))  # ceil(chars / ~110 por linha)
             altura_estimada += 55 + linhas * 24 + m["content"].count("\n") * 24
+        if st.session_state.get("resposta_pendente"):
+            altura_estimada += 80  # espaço para o indicador "consultando..."
         altura_chat = max(ALTURA_MIN, min(ALTURA_MAX, altura_estimada))
         area_chat = st.container(height=altura_chat, border=True)
         with area_chat:
             for msg in st.session_state.chat_messages:
                 with st.chat_message(msg["role"]):
                     st.markdown(msg["content"])
+
+            # Pergunta já está na tela; agora busca a resposta da IA
+            if st.session_state.get("resposta_pendente"):
+                with st.chat_message("assistant"):
+                    with st.spinner("Consultando base de conhecimento pedagógica..."):
+                        try:
+                            conteudo = montar_conteudo_com_historico(st.session_state.chat_messages)
+                            resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, conteudo)
+                            st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
+                        except Exception as e:
+                            st.session_state.chat_messages.append({
+                                "role": "assistant",
+                                "content": f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}"
+                            })
+                st.session_state.resposta_pendente = False
+                st.rerun()
 
         # Campo de mensagem: formulário fixo na aba (não depende de st.chat_input, que
         # some/aparece de forma inconsistente quando está dentro de abas)
@@ -369,18 +465,11 @@ Exemplo: <resposta>Olá! ... sua mensagem ao aluno ...</resposta>"""
             with col_btn:
                 enviar = st.form_submit_button("Enviar", use_container_width=True)
 
+        # Ao enviar: só registra a pergunta e recarrega a página. Assim a pergunta já aparece
+        # no chat imediatamente, e a chamada à IA acontece no bloco "resposta pendente" acima.
         if enviar and prompt and prompt.strip():
             st.session_state.chat_messages.append({"role": "user", "content": prompt.strip()})
-            with st.spinner("Consultando base de conhecimento pedagógica..."):
-                try:
-                    conteudo = montar_conteudo_com_historico(st.session_state.chat_messages)
-                    resposta_texto = chamar_gemini_com_fallback(api_key, SYSTEM_PROMPT, conteudo)
-                    st.session_state.chat_messages.append({"role": "assistant", "content": resposta_texto})
-                except Exception as e:
-                    st.session_state.chat_messages.append({
-                        "role": "assistant",
-                        "content": f"⚠️ Erro de conexão com o serviço de Inteligência Artificial: {e}"
-                    })
+            st.session_state.resposta_pendente = True
             st.rerun()
 
 # =============================================================================
@@ -390,7 +479,7 @@ with tab_materiais:
     st.markdown("""
         <div class="ava-card">
             <div class="ava-card-title">Repositório de Conteúdos e Referências Bibliográficas</div>
-            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
+            <p style="color: #CBD5E1; font-size: 0.92rem; margin: 0;">
                 Materiais estruturados segundo a ementa acadêmica oficial da UCSAL, com indicação direta dos capítulos das obras físicas disponíveis na Biblioteca Central da Universidade.
             </p>
         </div>
@@ -483,7 +572,7 @@ with tab_grupos:
     st.markdown("""
         <div class="ava-card">
             <div class="ava-card-title">Módulo de Aprendizagem Colaborativa</div>
-            <p style="color: #94A3B8; font-size: 0.92rem; margin: 0;">
+            <p style="color: #CBD5E1; font-size: 0.92rem; margin: 0;">
                 Agende sessões de estudo presenciais ou virtuais com colegas da UCSAL, monitores e alunos veteranos. 
                 Selecione um dos turnos e horários oficiais abaixo.
             </p>
